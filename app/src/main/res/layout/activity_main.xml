@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <Button
+        android:id="@+id/button"
+        android:layout_width="172dp"
+        android:layout_height="81dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginBottom="0dp"
+        android:text="READ" />
+
+    <Button
+        android:id="@+id/button2"
+        android:layout_width="172dp"
+        android:layout_height="81dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="71dp"
+        android:layout_marginBottom="0dp"
+        android:text="EXPLORE" />
+
+    <ImageButton
+        style="?android:attr/actionOverflowButtonStyle"
+        android:id="@+id/gallery"
+        android:tint="@color/black"
+        android:layout_width="81dp"
+        android:layout_height="81dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="-8dp"
+        android:layout_marginBottom="0dp"
+        android:translationZ="90dp" />
+
+    <com.camerakit.CameraKitView
+        android:id="@+id/camera"
+        android:layout_width="match_parent"
+        android:layout_height="680dp"
+        app:camera_facing="back">
+
+    </com.camerakit.CameraKitView>
+
+
+</RelativeLayout>

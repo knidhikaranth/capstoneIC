@@ -1,0 +1,291 @@
+package com.example.capstoneic;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import android.Manifest;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.speech.tts.TextToSpeech;
+import android.util.Log;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.PopupMenu;
+import android.widget.ProgressBar;
+import android.widget.Toast;
+
+import com.camerakit.CameraKitView;
+
+import org.jetbrains.annotations.NotNull;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import pl.aprilapps.easyphotopicker.EasyImage;
+
+public class MainActivity extends AppCompatActivity{
+    private CameraKitView cameraKitView;
+    private Button readButton;
+    private Button exploreButton;
+    private ProgressDialog pd;
+    private ImageButton gallery;
+    private int option;
+    private final int RESULT_IMG = 1;
+    private String real_path;
+
+    private String url = "http://"+"192.168.0.195"+":"+5000+"/";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        cameraKitView = findViewById(R.id.camera);
+        readButton = findViewById(R.id.button);
+        exploreButton = findViewById(R.id.button2);
+        gallery = findViewById(R.id.gallery);
+        readButton.setOnClickListener(photoOnClickListener);
+        exploreButton.setOnClickListener(objectOnClickListener);
+        gallery.setOnClickListener(optionsOnClickListener);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        cameraKitView.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        cameraKitView.onPause();
+        super.onPause();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        cameraKitView.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+
+    private File savedPhoto;
+
+    private View.OnClickListener optionsOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            PopupMenu popup = new PopupMenu(MainActivity.this, gallery);
+            popup.getMenuInflater().inflate(R.menu.gallery_options, popup.getMenu());
+
+            popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                @Override
+                public boolean onMenuItemClick(MenuItem item) {
+                    if(item.getItemId()==R.id.one) {
+                        Intent i = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                        i.setType("image/*");
+                        option = 1;
+                        startActivityForResult(i, RESULT_IMG);
+                        return true;
+                    }
+                    else{
+                        Intent i = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                        i.setType("image/*");
+                        option = 2;
+                        startActivityForResult(i, RESULT_IMG);
+                        return true;
+                    }
+                }
+            });
+
+            popup.show();
+        }
+    };
+
+    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+        super.onActivityResult(requestCode, resultCode, data);
+        System.out.println("resultcode "+resultCode+", requestcode "+requestCode);
+        switch (requestCode){
+            case RESULT_IMG:
+                if(resultCode==RESULT_OK){
+                    try{
+                        Uri imguri = data.getData();
+                        String path = imguri.toString();
+                        System.out.println("####path"+path);
+                        real_path = getRealPathFromUri(MainActivity.this, imguri);
+                        System.out.println(real_path);
+                        getLoading();
+                        savedPhoto = new File(real_path);
+                        if(option == 1)
+                            postRequest(savedPhoto, url+"ocr");
+                        else
+                            postRequest(savedPhoto, url+"caption");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+        }
+    }
+
+    private String getRealPathFromUri(Context context, Uri imguri) {
+        Cursor cursor = null;
+        try {
+            String[] proj = {MediaStore.Images.Media.DATA};
+            cursor = context.getContentResolver().query(imguri, proj, null, null, null);
+            int colind = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            cursor.moveToFirst();
+            return cursor.getString(colind);
+        }finally {
+            if(cursor!=null){
+                cursor.close();
+            }
+        }
+    }
+
+    private View.OnClickListener objectOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            cameraKitView.captureImage(new CameraKitView.ImageCallback() {
+                @Override
+                public void onImage(CameraKitView cameraKitView, final byte[] photo) {
+                    getLoading();
+                    savedPhoto = new File(Environment.getExternalStorageDirectory(), "photo.jpg");
+                    try {
+                        FileOutputStream outputStream = new FileOutputStream(savedPhoto.getPath());
+                        outputStream.write(photo);
+                        System.out.println(Arrays.toString(photo));
+                        outputStream.close();
+                    } catch (java.io.IOException e) {
+                        e.printStackTrace();
+                        Log.e("CKDemo", "Exception in photo callback");
+                    }
+                    postRequest(savedPhoto, url+"caption");
+                }
+            });
+        }
+    };
+
+    private View.OnClickListener photoOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            cameraKitView.captureImage(new CameraKitView.ImageCallback() {
+                @Override
+                public void onImage(CameraKitView cameraKitView, final byte[] photo) {
+                    getLoading();
+                    savedPhoto = new File(Environment.getExternalStorageDirectory(), "photo.jpg");
+                    try {
+                        FileOutputStream outputStream = new FileOutputStream(savedPhoto.getPath());
+                        System.out.println("______________>>"+savedPhoto.getPath());
+                        outputStream.write(photo);
+                        System.out.println(Arrays.toString(photo));
+                        outputStream.close();
+                    } catch (java.io.IOException e) {
+                        e.printStackTrace();
+                        Log.e("CKDemo", "Exception in photo callback");
+                    }
+                    postRequest(savedPhoto, url+"ocr");
+                }
+            });
+        }
+    };
+
+    public void getLoading(){
+        pd = new ProgressDialog(MainActivity.this);
+        pd.setMessage("Obtaining the results...");
+        pd.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        pd.setIndeterminate(true);
+        pd.setProgress(0);
+        pd.show();
+    }
+
+    public void openNewActivity(String description){
+        Intent intent = new Intent(this, ReadActivity.class);
+        Bundle bundle = new Bundle();
+        bundle.putString("desc", description);
+        bundle.putString("file", savedPhoto.getAbsolutePath());
+        intent.putExtras(bundle);
+        startActivity(intent);
+    }
+
+    private RequestBody requestBody;
+
+    private void postRequest(File file, String URL){
+        RequestBody requestBody = buildRequestBody(file);
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .readTimeout(0, TimeUnit.SECONDS)
+                .writeTimeout(0, TimeUnit.SECONDS)
+                .callTimeout(0, TimeUnit.SECONDS)
+                .build();
+        Request request = new Request
+            .Builder()
+            .post(requestBody)
+            .url(URL)
+            .build();
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(MainActivity.this, "Something went wrong:" + " " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        call.cancel();
+                    }
+                });
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException{
+                if(!response.isSuccessful()){
+                    throw new IOException("Unexpected Code" + response);
+                } else{
+                    openNewActivity(getResponse(response));
+                }
+            }
+        });
+    }
+
+    public String getResponse(Response response) throws IOException {
+        String resp = response.body().string();
+        return resp;
+    }
+
+    private RequestBody buildRequestBody(File file) {
+        requestBody = new MultipartBody.Builder().setType(MultipartBody.FORM)
+                .addFormDataPart("file", file.getName(),
+                        RequestBody.create(MediaType.parse("text/csv"), file))
+                .addFormDataPart("some-field", "some-value")
+                .build();
+        return requestBody;
+    }
+}
