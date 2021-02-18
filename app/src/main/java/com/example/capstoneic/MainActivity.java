@@ -1,5 +1,7 @@
 package com.example.capstoneic;
 
+import android.os.AsyncTask;
+import android.speech.RecognizerIntent;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -29,6 +31,7 @@ import android.widget.Toast;
 
 import com.camerakit.CameraKitView;
 
+import edu.cmu.pocketsphinx.*;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedInputStream;
@@ -58,7 +61,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import pl.aprilapps.easyphotopicker.EasyImage;
 
-public class MainActivity extends AppCompatActivity{
+public class MainActivity extends AppCompatActivity implements RecognitionListener {
     private CameraKitView cameraKitView;
     private Button readButton;
     private Button exploreButton;
@@ -70,9 +73,25 @@ public class MainActivity extends AppCompatActivity{
 
     private String url = "http://"+"192.168.0.195"+":"+5000+"/";
 
+    /* We only need the keyphrase to start recognition, one menu with list of choices,
+      and one word that is required for method switchSearch - it will bring recognizer
+      back to listening for the keyphrase*/
+    private static final String KWS_SEARCH = "wakeup";
+    private static final String MENU_SEARCH = "menu";
+    /* Keyword we are looking for to activate recognition */
+    private static final String KEYPHRASE = "hello";
+
+    /* Recognition object */
+    private SpeechRecognizer recognizer;
+
+    //private static final int SPEECH_REQUEST_CODE = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        runRecognizerSetup();
+
         setContentView(R.layout.activity_main);
         cameraKitView = findViewById(R.id.camera);
         readButton = findViewById(R.id.button);
@@ -81,6 +100,114 @@ public class MainActivity extends AppCompatActivity{
         readButton.setOnClickListener(photoOnClickListener);
         exploreButton.setOnClickListener(objectOnClickListener);
         gallery.setOnClickListener(optionsOnClickListener);
+
+        //displaySpeechRecognizer();
+    }
+
+    private void switchSearch(String searchName) {
+        recognizer.stop();
+        if (searchName.equals(KWS_SEARCH))
+            recognizer.startListening(searchName);
+        else
+            recognizer.startListening(searchName, 10000);
+    }
+
+    private void runRecognizerSetup() {
+        // Recognizer initialization is a time-consuming and it involves IO,
+        // so we execute it in async task
+        new AsyncTask<Void, Void, Exception>() {
+            @Override
+            protected Exception doInBackground(Void... params) {
+                try {
+                    Assets assets = new Assets(MainActivity.this);
+                    File assetDir = assets.syncAssets();
+                    setupRecognizer(assetDir);
+                } catch (IOException e) {
+                    return e;
+                }
+                return null;
+            }
+            @Override
+            protected void onPostExecute(Exception result) {
+                if (result != null) {
+                    System.out.println(result.getMessage());
+                } else {
+                    switchSearch(KWS_SEARCH);
+                }
+            }
+        }.execute();
+
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        if (recognizer != null) {
+            recognizer.cancel();
+            recognizer.shutdown();
+        }
+    }
+
+    @Override
+    public void onPartialResult(Hypothesis hypothesis) {
+        if (hypothesis == null)
+            return;
+        String text = hypothesis.getHypstr();
+        if (text.equals(KEYPHRASE)){
+            Toast.makeText(MainActivity.this, "start", Toast.LENGTH_SHORT).show();
+            switchSearch(MENU_SEARCH);
+        }else if (text.equals("read")) {
+            Toast.makeText(MainActivity.this, "Read", Toast.LENGTH_SHORT).show();
+            readButton.performClick();
+        }else if (text.equals("explore")) {
+            Toast.makeText(MainActivity.this, "Explore", Toast.LENGTH_SHORT).show();
+            exploreButton.performClick();
+        } else if (text.equals("good morning")) {
+            System.out.println("Good morning to you too!");
+        }
+    }
+
+    @Override
+    public void onEndOfSpeech() {
+        if (!recognizer.getSearchName().equals(KWS_SEARCH))
+            switchSearch(KWS_SEARCH);
+    }
+
+    @Override
+    public void onBeginningOfSpeech() {
+    }
+
+    @Override
+    public void onResult(Hypothesis hypothesis) {
+        if (hypothesis != null) {
+            System.out.println(hypothesis.getHypstr());
+        }
+    }
+
+    @Override
+    public void onError(Exception error) {
+        System.out.println(error.getMessage());
+    }
+
+    @Override
+    public void onTimeout() {
+        switchSearch(KWS_SEARCH);
+    }
+
+    private void setupRecognizer(File assetsDir) throws IOException {
+        recognizer = SpeechRecognizerSetup.defaultSetup()
+                .setAcousticModel(new File(assetsDir, "en-us-ptm"))
+                .setDictionary(new File(assetsDir, "cmudict-en-us.dict"))
+                // Disable this line if you don't want recognizer to save raw
+                // audio files to app's storage
+                //.setRawLogDir(assetsDir)
+                .getRecognizer();
+        recognizer.addListener(this);
+        // Create keyword-activation search.
+        recognizer.addKeyphraseSearch(KWS_SEARCH, KEYPHRASE);
+        // Create your custom grammar-based search
+        File menuGrammar = new File(assetsDir, "mymenu.gram");
+        recognizer.addGrammarSearch(MENU_SEARCH, menuGrammar);
     }
 
     @Override
@@ -135,6 +262,16 @@ public class MainActivity extends AppCompatActivity{
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data){
         super.onActivityResult(requestCode, resultCode, data);
+
+        /*if (requestCode == SPEECH_REQUEST_CODE && resultCode == RESULT_OK) {
+            List<String> results = data.getStringArrayListExtra(
+                    RecognizerIntent.EXTRA_RESULTS);
+            String spokenText = results.get(0);
+            System.out.println("{{{{{{{{{{{{{ "+spokenText);
+            // Do something with spokenText
+        }
+        super.onActivityResult(requestCode, resultCode, data);*/
+
         System.out.println("resultcode "+resultCode+", requestcode "+requestCode);
         switch (requestCode){
             case RESULT_IMG:
@@ -288,4 +425,5 @@ public class MainActivity extends AppCompatActivity{
                 .build();
         return requestBody;
     }
+
 }
