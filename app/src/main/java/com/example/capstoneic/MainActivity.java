@@ -79,12 +79,10 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
     private static final String KWS_SEARCH = "wakeup";
     private static final String MENU_SEARCH = "menu";
     /* Keyword we are looking for to activate recognition */
-    private static final String KEYPHRASE = "hello";
+    private static final String KEYPHRASE = "help me";
 
     /* Recognition object */
     private SpeechRecognizer recognizer;
-
-    //private static final int SPEECH_REQUEST_CODE = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,8 +111,6 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
     }
 
     private void runRecognizerSetup() {
-        // Recognizer initialization is a time-consuming and it involves IO,
-        // so we execute it in async task
         new AsyncTask<Void, Void, Exception>() {
             @Override
             protected Exception doInBackground(Void... params) {
@@ -136,7 +132,6 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
                 }
             }
         }.execute();
-
     }
 
     @Override
@@ -156,16 +151,10 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
         if (text.equals(KEYPHRASE)){
             Toast.makeText(MainActivity.this, "start", Toast.LENGTH_SHORT).show();
             switchSearch(MENU_SEARCH);
-        }else if (text.equals("read")) {
-            Toast.makeText(MainActivity.this, "Read", Toast.LENGTH_SHORT).show();
-            readButton.performClick();
-        }else if (text.equals("explore")) {
-            Toast.makeText(MainActivity.this, "Explore", Toast.LENGTH_SHORT).show();
-            exploreButton.performClick();
-        } else if (text.equals("good morning")) {
-            System.out.println("Good morning to you too!");
+        }else {
+            System.out.println(hypothesis.getHypstr());
         }
-    }
+        }
 
     @Override
     public void onEndOfSpeech() {
@@ -180,10 +169,17 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
     @Override
     public void onResult(Hypothesis hypothesis) {
         if (hypothesis != null) {
-            System.out.println(hypothesis.getHypstr());
+            String text = hypothesis.getHypstr();
+            if (text.equals("read")) {
+                Toast.makeText(MainActivity.this, "Read", Toast.LENGTH_SHORT).show();
+                readButton.performClick();
+            } else if (text.equals("explore")) {
+                Toast.makeText(MainActivity.this, "Explore", Toast.LENGTH_SHORT).show();
+                exploreButton.performClick();
+                System.out.println(text);
+            }
         }
     }
-
     @Override
     public void onError(Exception error) {
         System.out.println(error.getMessage());
