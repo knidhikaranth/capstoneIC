@@ -29,6 +29,7 @@ android {
 }
 
 dependencies {
+    implementation 'org.tensorflow:tensorflow-lite:+'
     implementation 'com.github.jkwiecien:EasyImage:2.1.0'
     implementation 'com.squareup.okhttp3:okhttp:4.5.0'
     implementation 'com.camerakit:camerakit:1.0.0-beta1'
@@ -40,8 +41,12 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
     implementation project(':pocketsphinx-android-5prealpha-release')
 }
-
-
+android {
+    aaptOptions {
+        noCompress "tflite"
+        noCompress "lite"
+    }
+}
 ant.importBuild 'assets.xml'
 preBuild.dependsOn(list, checksum)
 clean.dependsOn(clean_assets)

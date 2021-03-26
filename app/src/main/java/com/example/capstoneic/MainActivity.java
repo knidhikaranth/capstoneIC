@@ -259,15 +259,6 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
     protected void onActivityResult(int requestCode, int resultCode, Intent data){
         super.onActivityResult(requestCode, resultCode, data);
 
-        /*if (requestCode == SPEECH_REQUEST_CODE && resultCode == RESULT_OK) {
-            List<String> results = data.getStringArrayListExtra(
-                    RecognizerIntent.EXTRA_RESULTS);
-            String spokenText = results.get(0);
-            System.out.println("{{{{{{{{{{{{{ "+spokenText);
-            // Do something with spokenText
-        }
-        super.onActivityResult(requestCode, resultCode, data);*/
-
         System.out.println("resultcode "+resultCode+", requestcode "+requestCode);
         switch (requestCode){
             case RESULT_IMG:

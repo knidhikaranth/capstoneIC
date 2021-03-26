@@ -1,6 +1,7 @@
 package com.example.capstoneic;
 
 import android.os.AsyncTask;
+import android.util.Log;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
@@ -23,12 +24,11 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.camerakit.CameraKitView;
 import edu.cmu.pocketsphinx.*;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 
@@ -63,9 +63,12 @@ public class ReadActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
         runRecognizerSetup();
         setContentView(R.layout.activity_read);
-        Button start = findViewById(R.id.button3);
-        Button stop = findViewById(R.id.button4);
-        Button pause = findViewById(R.id.button5);
+        start = findViewById(R.id.button3);
+        stop = findViewById(R.id.button4);
+        pause = findViewById(R.id.button5);
+        start.setOnClickListener(playOnClickListener);
+        pause.setOnClickListener(pauseOnClickListener);
+        stop.setOnClickListener(stopOnClickListener);
         ImageView image = findViewById(R.id.imageView);
 
         Bundle bundle = getIntent().getExtras();
@@ -91,7 +94,7 @@ public class ReadActivity extends AppCompatActivity implements TextToSpeech.OnIn
         tv.setText(description);
         ll.addView(tv);
 
-        start.setOnClickListener(new View.OnClickListener() {
+        /*start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if(created==0) {
@@ -147,8 +150,66 @@ public class ReadActivity extends AppCompatActivity implements TextToSpeech.OnIn
                 Intent intent = new Intent(getApplicationContext(), MainActivity.class);
                 startActivity(intent);
             }
-        });
+        });*/
     }
+
+    private View.OnClickListener playOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if(created==0) {
+                try {
+                    String p = Environment.getExternalStorageDirectory().getAbsolutePath() + "/audio2.wav";
+                    Uri uri = Uri.parse(p);
+                    mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                    mediaPlayer.setDataSource(getApplicationContext(), uri);
+                    mediaPlayer.prepare();
+                    mediaPlayer.start();
+                    start.setText("Replay");
+
+                    created = 1;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            else{
+                mediaPlayer.stop();
+                try {
+                    mediaPlayer.prepare();
+                    pause.setText("Pause");
+                    paused = 0;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                mediaPlayer.start();
+            }
+        }
+    };
+
+    private View.OnClickListener pauseOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if(created == 1 && paused == 0) {
+                mediaPlayer.pause();
+                pause.setText("Resume");
+                paused = 1;
+            }
+            else{
+                mediaPlayer.start();
+                pause.setText("Pause");
+                paused = 0;
+            }
+        }
+        };
+
+    private View.OnClickListener stopOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            mediaPlayer.stop();
+            mediaPlayer.release();
+            Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+            startActivity(intent);
+        }
+    };
 
     private void switchSearch(String searchName) {
         recognizer.stop();
@@ -228,13 +289,16 @@ public class ReadActivity extends AppCompatActivity implements TextToSpeech.OnIn
     public void onResult(Hypothesis hypothesis) {
         if (hypothesis != null) {
             String text = hypothesis.getHypstr();
-            if (text.equals("read")) {
+            if (text.equals("play")) {
                 Toast.makeText(ReadActivity.this, "play", Toast.LENGTH_SHORT).show();
                 start.performClick();
-            } else if (text.equals("explore")) {
+            } else if (text.equals("pause")) {
                 Toast.makeText(ReadActivity.this, "pause", Toast.LENGTH_SHORT).show();
                 pause.performClick();
                 System.out.println(text);
+            }else if (text.equals("go back")) {
+                Toast.makeText(ReadActivity.this, "go back", Toast.LENGTH_SHORT).show();
+                stop.performClick();
             }
         }
     }
