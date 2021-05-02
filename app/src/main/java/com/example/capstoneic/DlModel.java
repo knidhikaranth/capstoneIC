@@ -10,7 +10,15 @@ import java.nio.channels.FileChannel;
 
 public class DlModel {
 
-    protected Interpreter tflite = new Interpreter(loadModelFile(activity));
+    //private Interpreter tflite; = new Interpreter(loadModelFile(activity));
+
+    protected String getModelPath(){
+        return null;
+    }
+
+    private void initializeInterpreter(){
+
+    }
 
     private MappedByteBuffer loadModelFile(Activity activity) throws IOException {
         AssetFileDescriptor fileDescriptor = activity.getAssets().openFd(getModelPath());

@@ -71,7 +71,9 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
     private final int RESULT_IMG = 1;
     private String real_path;
 
-    private String url = "http://"+"192.168.0.195"+":"+5000+"/";
+    //http://ef4e5e271da3.ngrok.io/
+    private String url = "http://"+"e5cf593e5fd0.ngrok.io/";
+    //private String url = "http://"+"192.168.0.195"+":"+5000+"/";
 
     /* We only need the keyphrase to start recognition, one menu with list of choices,
       and one word that is required for method switchSearch - it will bring recognizer
@@ -83,6 +85,7 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
 
     /* Recognition object */
     private SpeechRecognizer recognizer;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
